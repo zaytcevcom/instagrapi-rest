@@ -18,9 +18,12 @@ class ClientStorage:
         """
         key = parse.unquote(sessionid.strip(" \""))
         try:
-            settings = json.loads(self.db.search(Query().sessionid == key)[0]['settings'])
+            data = self.db.search(Query().sessionid == key)[0]
+            settings = json.loads(data['settings'])
+
             cl = Client()
             cl.set_settings(settings)
+            cl.set_proxy(data['proxy'])
             cl.get_timeline_feed()
             return cl
         except IndexError:
@@ -30,7 +33,7 @@ class ClientStorage:
         """Set client settings
         """
         key = parse.unquote(cl.sessionid.strip(" \""))
-        self.db.insert({'sessionid': key, 'settings': json.dumps(cl.get_settings())})
+        self.db.insert({'sessionid': key, 'settings': json.dumps(cl.get_settings()), 'proxy': cl.proxy})
         return True
 
     def close(self):

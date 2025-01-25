@@ -18,6 +18,8 @@ async def auth_login(username: str = Form(...),
                      proxy: Optional[str] = Form(""),
                      locale: Optional[str] = Form(""),
                      timezone: Optional[str] = Form(""),
+                     user_agent: Optional[str] = Form(""),
+                     device: Optional[str] = Form(""),
                      clients: ClientStorage = Depends(get_clients)) -> str:
     """Login by username and password with 2FA
     """
@@ -31,8 +33,19 @@ async def auth_login(username: str = Form(...),
     if timezone != "":
         cl.set_timezone_offset(timezone)
 
+    if user_agent != "":
+        cl.set_user_agent(user_agent)
+
+    if device:
+        try:
+            device_dict = json.loads(device)
+            cl.set_device(device_dict)
+        except json.JSONDecodeError:
+            return "Invalid JSON in device"
+
     # We're mocking the input
     with patch('builtins.input', return_value=verification_code):
+        cl.challenge_code_handler = None
         result = cl.login(username, password)
 
     if result:
@@ -56,7 +69,7 @@ async def auth_login_by_sessionid(sessionid: str = Form(...),
 
 @router.post("/relogin")
 async def auth_relogin(sessionid: str = Form(...),
-                       clients: ClientStorage = Depends(get_clients)) -> str:
+                       clients: ClientStorage = Depends(get_clients)) -> bool:
     """Relogin by username and password (with clean cookies)
     """
     cl = clients.get(sessionid)
